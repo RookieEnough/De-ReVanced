@@ -1376,6 +1376,32 @@
       "options": []
     },
     {
+      "name": "Remove popular search time limit",
+      "description": "Removes the 7-day trial countdown on popular search results so the free popular-search preview (30 works) never expires.",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.pxv.android",
+          "name": "Pixiv",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": "#0096FA",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "6.141.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Rename shared permissions",
       "description": "Rename certain permissions shared across Amazon apps. Applying this patch can fix installation errors, but can also break features in certain apps.",
       "default": true,

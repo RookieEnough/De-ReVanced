@@ -65,7 +65,7 @@
 | Nothing X | `com.nothing.smartcenter` | <ul><li>Hide Ads</li></ul> |
 | NU.nl | `nl.sanomamedia.android.nu` | <ul><li>Hide Ads</li></ul> |
 | Photomath | `com.microblink.photomath` | <ul><li>Spoof device ID</li><li>Signature detection</li><li>Unlock Plus</li><li>Bookpoint</li><li>Hide update popup</li></ul> |
-| Pixiv | `jp.pxv.android` | <ul><li>Hide ads</li></ul> |
+| Pixiv | `jp.pxv.android` | <ul><li>Hide ads</li><li>Remove popular search time limit</li></ul> |
 | Strava | `com.strava` | <ul><li>Group kudos</li><li>Hide distractions</li><li>Media download</li><li>Media upload</li><li>Disable quick edit</li><li>Password login</li><li>Block tracking</li><li>Unlock subscription</li><li>Disable upsell</li></ul> |
 | Twitch | `tv.twitch.android.app` | <ul><li>Block audio ads</li><li>Block embedded ads</li><li>Block video ads</li><li>Show deleted messages</li><li>Auto claim channel points</li><li>Debug mode</li></ul> |
 | Viber | `com.viber.voip` | <ul><li>Hide Ads</li><li>Hide navigation buttons</li></ul> |
