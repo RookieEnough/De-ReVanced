@@ -22,6 +22,7 @@ import app.morphe.patches.shared.misc.gms.Constants.AUTHORITIES
 import app.morphe.patches.shared.misc.gms.Constants.PERMISSIONS
 import app.morphe.patches.shared.misc.settings.preference.BasePreferenceScreen
 import app.morphe.patches.shared.misc.settings.preference.IntentPreference
+import app.morphe.util.asSequence
 import app.morphe.util.findMutableMethodOf
 import app.morphe.util.getReference
 import app.morphe.util.returnEarly
@@ -62,7 +63,7 @@ fun gmsCoreSupportPatch(
     earlyReturnFingerprints: Set<Fingerprint> = setOf(),
     mainActivityOnCreateFingerprint: Fingerprint,
     extensionPatch: Patch<*>,
-    gmsCoreSupportResourcePatchFactory: () -> Patch<*>,
+    gmsCoreSupportResourcePatchFactory: (MutableMap<String, String>) -> Patch<*>,
     executeBlock: BytecodePatchContext.() -> Unit = {},
     block: BytecodePatchBuilder.() -> Unit = {},
 ) = bytecodePatch(
@@ -71,9 +72,11 @@ fun gmsCoreSupportPatch(
         "using a GmsCore instead of Google Play Services.",
 ) {
 
+    val appPermissionReplacements = mutableMapOf<String, String>()
+
     dependsOn(
         changePackageNamePatch,
-        gmsCoreSupportResourcePatchFactory(),
+        gmsCoreSupportResourcePatchFactory(appPermissionReplacements),
         extensionPatch,
     )
 
@@ -117,7 +120,7 @@ fun gmsCoreSupportPatch(
             in PERMISSIONS,
             in ACTIONS,
             in AUTHORITIES,
-            -> referencedString.replace("com.google", GMS_CORE_VENDOR_GROUP_ID)
+                -> referencedString.replace("com.google", GMS_CORE_VENDOR_GROUP_ID)
 
             // No vendor prefix for whatever reason...
             "subscribedfeeds" -> "$GMS_CORE_VENDOR_GROUP_ID.subscribedfeeds"
@@ -148,11 +151,13 @@ fun gmsCoreSupportPatch(
             return null
         }
 
+        fun appPermissionTransform(string: String): String? = appPermissionReplacements[string]
+
         fun packageNameTransform(fromPackageName: String, toPackageName: String): (String) -> String? = { string ->
             when (string) {
                 "$fromPackageName.SuggestionProvider",
                 "$fromPackageName.fileprovider",
-                -> string.replace(fromPackageName, toPackageName)
+                    -> string.replace(fromPackageName, toPackageName)
 
                 else -> null
             }
@@ -179,6 +184,7 @@ fun gmsCoreSupportPatch(
 
         // Transform all strings using all provided transforms, first match wins.
         val transformations = arrayOf(
+            ::appPermissionTransform,
             ::commonTransform,
             ::contentUrisTransform,
             packageNameTransform(fromPackageName, packageName),
@@ -515,6 +521,7 @@ fun gmsCoreSupportResourcePatch(
     toPackageName: String,
     spoofedPackageSignature: String,
     screen: BasePreferenceScreen.Screen,
+    appPermissionReplacements: MutableMap<String, String>,
     executeBlock: ResourcePatchContext.() -> Unit = {},
     block: ResourcePatchBuilder.() -> Unit = {},
 ) = resourcePatch {
@@ -571,8 +578,6 @@ fun gmsCoreSupportResourcePatch(
             val transformations = mapOf(
                 "package=\"$fromPackageName" to "package=\"$packageName",
                 "android:authorities=\"$fromPackageName" to "android:authorities=\"$packageName",
-                "$fromPackageName.permission.C2D_MESSAGE" to "$packageName.permission.C2D_MESSAGE",
-                "$fromPackageName.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" to "$packageName.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
                 "com.google.android.c2dm" to "$GMS_CORE_VENDOR_GROUP_ID.android.c2dm",
                 "com.google.android.libraries.photos.api.mars" to "$GMS_CORE_VENDOR_GROUP_ID.android.apps.photos.api.mars",
                 "</queries>" to "<package android:name=\"$GMS_CORE_VENDOR_GROUP_ID.android.gms\"/></queries>",
@@ -587,6 +592,47 @@ fun gmsCoreSupportResourcePatch(
                     )
                 },
             )
+
+            document("AndroidManifest.xml").use { document ->
+                appPermissionReplacements.clear()
+
+                fun clonePermissionName(permissionName: String) = when {
+                    permissionName.startsWith("$fromPackageName.") -> permissionName.replaceFirst(
+                        fromPackageName, packageName
+                    )
+
+                    permissionName.startsWith(".") -> "$packageName$permissionName"
+                    else -> "$packageName.$permissionName"
+                }
+
+                document.getElementsByTagName("permission").asSequence().map { it as Element }.forEach { permission ->
+                    val oldName = permission.getAttribute("android:name")
+                    val newName = clonePermissionName(oldName)
+
+                    appPermissionReplacements[oldName] = newName
+                    permission.setAttribute("android:name", newName)
+                }
+
+                sequenceOf("uses-permission", "uses-permission-sdk-23").flatMap {
+                    document.getElementsByTagName(it).asSequence()
+                }.map { it as Element }.forEach { permission ->
+                    val oldName = permission.getAttribute("android:name")
+                    appPermissionReplacements[oldName]?.let { permission.setAttribute("android:name", it) }
+                }
+
+                val permissionAttributes = arrayOf(
+                    "android:permission",
+                    "android:readPermission",
+                    "android:writePermission",
+                )
+
+                document.getElementsByTagName("*").asSequence().map { it as Element }.forEach { element ->
+                    permissionAttributes.forEach { attribute ->
+                        val oldName = element.getAttribute(attribute)
+                        appPermissionReplacements[oldName]?.let { element.setAttribute(attribute, it) }
+                    }
+                }
+            }
         }
 
         patchManifest()

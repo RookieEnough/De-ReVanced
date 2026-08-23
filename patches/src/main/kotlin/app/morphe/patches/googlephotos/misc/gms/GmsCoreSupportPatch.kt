@@ -42,11 +42,11 @@ private object DummyPreferenceScreen : BasePreferenceScreen() {
     }
 }
 
-private fun gmsCoreSupportResourcePatch() =
+private fun gmsCoreSupportResourcePatch(appPermissionReplacements: MutableMap<String, String>) =
     app.morphe.patches.shared.misc.gms.gmsCoreSupportResourcePatch(
         fromPackageName = PHOTOS_PACKAGE_NAME,
         toPackageName = MORPHE_PHOTOS_PACKAGE_NAME,
         spoofedPackageSignature = "24bb24c05e47e0aefa68a58a766179d9b613a600",
         screen = DummyPreferenceScreen.SCREEN,
+        appPermissionReplacements = appPermissionReplacements,
     )
-
