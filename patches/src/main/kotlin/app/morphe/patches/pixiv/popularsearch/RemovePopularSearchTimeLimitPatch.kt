@@ -1,6 +1,6 @@
 /*
- * Copyright 2025 Morphe.
- * https://github.com/MorpheApp/morphe-patches-library
+ * Copyright 2025 De-Vanced.
+ * https://github.com/RookieEnough/De-Vanced
  */
 
 package app.morphe.patches.pixiv.popularsearch
@@ -8,9 +8,7 @@ package app.morphe.patches.pixiv.popularsearch
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.util.indexOfFirstInstructionOrThrow
 import app.morphe.patches.shared.compat.AppCompatibilities
-import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 @Suppress("unused")
@@ -22,15 +20,16 @@ val removePopularSearchTimeLimitPatch = bytecodePatch(
     compatibleWith(AppCompatibilities.PIXIV)
 
     execute {
-        PremiumTrialServiceGetPremiumTrialExpireDaysFingerprint.method.run {
-            val daysSinceFirstLaunchSubIndex = indexOfFirstInstructionOrThrow(Opcode.RSUB_INT_LIT8)
+        PremiumTrialServiceGetPremiumTrialExpireDaysFingerprint.let {
+            it.method.apply {
+                val daysSinceFirstLaunchSubIndex = it.instructionMatches.first().index
+                val register = getInstruction<OneRegisterInstruction>(daysSinceFirstLaunchSubIndex).registerA
 
-            val instruction = getInstruction<OneRegisterInstruction>(daysSinceFirstLaunchSubIndex)
-
-            replaceInstruction(
-                daysSinceFirstLaunchSubIndex,
-                "const/4 v${instruction.registerA}, 0x7",
-            )
+                replaceInstruction(
+                    daysSinceFirstLaunchSubIndex,
+                    "const/4 v$register, 0x7"
+                )
+            }
         }
     }
 }
