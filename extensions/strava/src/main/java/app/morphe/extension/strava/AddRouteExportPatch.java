@@ -1,5 +1,6 @@
-/*
- * De-Vanced Strava Route Export Patch
+/**
+ * Copyright 2026 De-Vanced
+ * https://github.com/RookieEnough/De-Vanced/pull/112
  */
 
 package app.morphe.extension.strava;
@@ -20,6 +21,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
@@ -201,8 +203,11 @@ public final class AddRouteExportPatch {
 
     public static void showExportDialog(Context context, long routeId) {
         Utils.runOnMainThread(() -> {
-            Context ctx = context != null ? context : Utils.getContext();
-            if (ctx == null) return;
+            android.app.Activity activity = context instanceof android.app.Activity
+                    ? (android.app.Activity) context
+                    : Utils.getActivity();
+            if (activity == null || activity.isFinishing()) return;
+            Context ctx = activity;
 
             long finalRouteId = routeId > 0 ? routeId : currentRouteId;
             if (finalRouteId <= 0) {
@@ -254,7 +259,7 @@ public final class AddRouteExportPatch {
                 }
 
                 byte[] bytes = body.bytes();
-                String textHead = new String(bytes, 0, Math.min(bytes.length, 512));
+                String textHead = new String(bytes, 0, Math.min(bytes.length, 512), StandardCharsets.UTF_8);
 
                 // Check if the response is valid XML or HTML error
                 if (textHead.contains("<!DOCTYPE") || textHead.contains("<html") || textHead.contains("login") || textHead.contains("Sign In")) {
@@ -301,6 +306,7 @@ public final class AddRouteExportPatch {
 
         Response response = client.newCall(requestBuilder.build()).execute();
         if (!response.isSuccessful()) {
+            response.close();
             throw new IOException("Code HTTP " + response.code());
         }
         return response;

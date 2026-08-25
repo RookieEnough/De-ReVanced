@@ -39,15 +39,10 @@ dependencies {
 }
 
 tasks {
-    named("build") {
-        finalizedBy("buildAndroid")
-    }
-
     register<JavaExec>("generatePatchesList") {
         description = "Build patch with patch list"
 
-        dependsOn("build")
-        finalizedBy("buildAndroid")
+        dependsOn(build)
 
         classpath = sourceSets["main"].runtimeClasspath + patchListGeneratorClasspath
         mainClass.set("util.PatchListGeneratorKt")
