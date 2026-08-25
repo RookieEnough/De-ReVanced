@@ -1,16 +1,25 @@
+/**
+ * Copyright 2026 De-Vanced
+ * https://github.com/RookieEnough/De-Vanced/pull/112
+ */
 package app.morphe.patches.strava.route.export
 
 import app.morphe.patcher.Fingerprint
-import com.android.tools.smali.dexlib2.AccessFlags
 
-internal object RouteDetailShareFingerprint : Fingerprint(
-    accessFlags = listOf(AccessFlags.PUBLIC),
-    strings = listOf("route"),
+internal object ShareObjectHandlerFingerprint : Fingerprint(
+    custom = { method, _ ->
+        method.parameterTypes.any { it.contains("ShareObject") }
+    },
 )
 
-internal object HandleRouteActionFingerprint : Fingerprint(
-    parameters = listOf(
-        "Landroid/view/View;",
-        "Lcom/strava/bottomsheet/BottomSheetItem;",
-    ),
+internal object ShareSheetActivityOnCreateFingerprint : Fingerprint(
+    definingClass = "/ShareSheetActivity;",
+    name = "onCreate",
+    parameters = listOf("Landroid/os/Bundle;"),
+)
+
+internal object CopyLinkActivityOnCreateFingerprint : Fingerprint(
+    definingClass = "/CopyLinkToClipboardActivity;",
+    name = "onCreate",
+    parameters = listOf("Landroid/os/Bundle;"),
 )

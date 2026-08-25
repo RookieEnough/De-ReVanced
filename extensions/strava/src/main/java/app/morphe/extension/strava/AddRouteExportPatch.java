@@ -33,9 +33,6 @@ import okhttp3.ResponseBody;
 
 @SuppressLint("NewApi")
 public final class AddRouteExportPatch {
-    public static final int ACTION_EXPORT_ROUTE = -10;
-    public static final int ACTION_EXPORT_GPX = -11;
-    public static final int ACTION_EXPORT_TCX = -12;
 
     private static final OkHttpClient client = new OkHttpClient.Builder()
             .followRedirects(true)
@@ -131,34 +128,6 @@ public final class AddRouteExportPatch {
         return currentRouteId;
     }
 
-    public static java.util.List appendExportAction(java.util.List originalList) {
-        if (originalList == null) return null;
-        try {
-            java.util.ArrayList newList = new java.util.ArrayList(originalList);
-            Class<?> saveMediaClass = Class.forName("AC.T$e$j");
-            java.lang.reflect.Field instanceField = saveMediaClass.getDeclaredField("f844d");
-            instanceField.setAccessible(true);
-            Object saveMediaInstance = instanceField.get(null);
-            if (saveMediaInstance != null && !newList.contains(saveMediaInstance)) {
-                newList.add(saveMediaInstance);
-            }
-            return newList;
-        } catch (Throwable e) {
-            return originalList;
-        }
-    }
-
-    public static boolean onShareItemClicked(Object item) {
-        if (item == null) return false;
-        String name = item.getClass().getName();
-        if (name.contains("SaveMedia") || name.endsWith("$j") || item.toString().contains("SaveMedia")) {
-            long routeId = currentRouteId;
-            Context context = Utils.getContext();
-            showExportDialog(context, routeId);
-            return true;
-        }
-        return false;
-    }
 
     public static void onShareSheetActivityStarted(final android.app.Activity activity) {
         if (activity == null) return;
@@ -184,22 +153,6 @@ public final class AddRouteExportPatch {
         });
     }
 
-    public static boolean handleAction(int actionId, long routeId) {
-        Context context = Utils.getContext();
-        switch (actionId) {
-            case ACTION_EXPORT_ROUTE:
-                showExportDialog(context, routeId);
-                return true;
-            case ACTION_EXPORT_GPX:
-                downloadRoute(context, routeId, "gpx");
-                return true;
-            case ACTION_EXPORT_TCX:
-                downloadRoute(context, routeId, "tcx");
-                return true;
-            default:
-                return false;
-        }
-    }
 
     public static void showExportDialog(Context context, long routeId) {
         Utils.runOnMainThread(() -> {
