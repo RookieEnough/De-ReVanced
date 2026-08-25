@@ -6,12 +6,6 @@ package app.morphe.patches.strava.route.export
 
 import app.morphe.patcher.Fingerprint
 
-internal object ShareObjectHandlerFingerprint : Fingerprint(
-    custom = { method, _ ->
-        method.parameterTypes.any { it.contains("ShareObject") }
-    },
-)
-
 internal object ShareSheetActivityOnCreateFingerprint : Fingerprint(
     definingClass = "/ShareSheetActivity;",
     name = "onCreate",
