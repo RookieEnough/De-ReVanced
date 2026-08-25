@@ -157,7 +157,7 @@ internal object AppCompatibilities {
         name = "Strava",
         packageName = "com.strava",
         appIconColor = 0xFC6925,
-        targets = listOf(AppTarget("473.11"))
+        targets = listOf(AppTarget("477.14"))
     )
 
     val TWITCH = Compatibility(

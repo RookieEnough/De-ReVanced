@@ -95,7 +95,7 @@ public final class AddMediaDownloadPatch {
                     values.put(MediaStore.Images.Media.IS_PENDING, 0);
                     resolver.update(row, values, null);
                 }
-                showInfoToast("yis_2024_local_save_image_success", "✔️");
+                showInfoToast("animated_content_save_image_success", "✔️");
             } catch (IOException e) {
                 showErrorToast("download_failure", "❌", e);
             }
@@ -156,7 +156,7 @@ public final class AddMediaDownloadPatch {
                     values.put(MediaStore.Video.Media.IS_PENDING, 0);
                     resolver.update(row, values, null);
                 }
-                showInfoToast("yis_2024_local_save_video_success", "✔️");
+                showInfoToast("animated_content_save_video_success", "✔️");
             } catch (IOException e) {
                 showErrorToast("download_failure", "❌", e);
             }

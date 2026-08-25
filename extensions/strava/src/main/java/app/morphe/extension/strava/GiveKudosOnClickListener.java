@@ -15,6 +15,25 @@ public final class GiveKudosOnClickListener implements View.OnClickListener {
         this.handlerMethodName = handlerMethodName;
     }
 
+    /**
+     * Attaches a listener to the "Give Kudos" button.
+     *
+     * <p>Called instead of setting the listener in patched code, because the constructor
+     * this is injected into has too few free registers to do so inline.
+     * Using {@link View#setOnClickListener} also avoids depending on the button's own type,
+     * which overrides that method to forward clicks into its Compose content.
+     *
+     * @param view              The "Give Kudos" button, or {@code null} if it is not in the layout.
+     * @param outerThis         Instance declaring {@code handlerMethodName}.
+     * @param actionSingleton   Singleton state that makes the handler show the "Give Kudos" dialog.
+     * @param handlerMethodName Name of the method that handles the state.
+     */
+    public static void attach(View view, Object outerThis, Object actionSingleton, String handlerMethodName) {
+        if (view == null) return;
+
+        view.setOnClickListener(new GiveKudosOnClickListener(outerThis, actionSingleton, handlerMethodName));
+    }
+
     @Override
     public void onClick(View v) {
         if (outerThis == null || actionSingleton == null || handlerMethodName == null) return;
@@ -33,7 +52,7 @@ public final class GiveKudosOnClickListener implements View.OnClickListener {
             target.setAccessible(true);
             target.invoke(outerThis, actionSingleton);
         } catch (Throwable ignored) {
-            // Best-effort: if Tumblr/Strava internals change, avoid crashing the app.
+            // Best-effort: if Strava internals change, avoid crashing the app.
         }
     }
 }

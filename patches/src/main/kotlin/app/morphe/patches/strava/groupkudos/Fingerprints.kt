@@ -15,8 +15,3 @@ internal object InitFingerprint : Fingerprint(
         "Landroidx/fragment/app/FragmentManager;",
     ),
 )
-
-internal object ActionHandlerFingerprint : Fingerprint(
-    strings = listOf("state"),
-)
-

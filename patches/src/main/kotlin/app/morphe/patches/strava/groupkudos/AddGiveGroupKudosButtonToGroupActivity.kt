@@ -7,33 +7,25 @@ package app.morphe.patches.strava.groupkudos
 import app.morphe.patches.shared.compat.AppCompatibilities
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.extensions.InstructionExtensions.instructions
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
-import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.strava.misc.extension.sharedExtensionPatch
 import app.morphe.util.childElementsSequence
+import app.morphe.util.containsLiteralInstruction
 import app.morphe.util.findElementByAttributeValueOrThrow
+import app.morphe.util.getFreeRegisterProvider
 import app.morphe.util.getReference
-import com.android.tools.smali.dexlib2.AccessFlags
+import app.morphe.util.indexOfFirstLiteralInstructionOrThrow
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
-import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction11x
-import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction21c
-import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction31i
 import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction35c
-import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
-import com.android.tools.smali.dexlib2.iface.reference.TypeReference
-import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
-import com.android.tools.smali.dexlib2.immutable.ImmutableField
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import org.w3c.dom.Element
 
-private const val VIEW_CLASS_DESCRIPTOR = "Landroid/view/View;"
-private const val ON_CLICK_LISTENER_CLASS_DESCRIPTOR = "Landroid/view/View\$OnClickListener;"
 private const val GIVE_KUDOS_ON_CLICK_LISTENER_DESCRIPTOR =
     "Lapp/morphe/extension/strava/GiveKudosOnClickListener;"
+private const val ATTACH_LISTENER_METHOD_DESCRIPTOR = "$GIVE_KUDOS_ON_CLICK_LISTENER_DESCRIPTOR->" +
+    "attach(Landroid/view/View;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)V"
 
 private var shakeToKudosStringId = -1
 private var kudosIdId = -1
@@ -111,45 +103,47 @@ val addGiveGroupKudosButtonToGroupActivity = bytecodePatch(
     dependsOn(addGiveKudosButtonToLayoutPatch, sharedExtensionPatch)
 
     execute {
-        val className = InitFingerprint.originalClassDef.type
-        val actionHandlerMethod = ActionHandlerFingerprint.match(InitFingerprint.originalClassDef).method
+        val viewDelegateClassDef = InitFingerprint.originalClassDef
 
-        val constShakeToKudosStringIndex = actionHandlerMethod.instructions.indexOfFirst {
-            it is NarrowLiteralInstruction && it.narrowLiteral == shakeToKudosStringId
-        }
-        val getSingletonInstruction =
-            actionHandlerMethod.instructions.filterIsInstance<BuilderInstruction21c>().last {
-                it.opcode == Opcode.SGET_OBJECT && it.location.index < constShakeToKudosStringIndex
-            }
+        // Method that renders the view states, one of which shows the "Give Kudos" dialog.
+        // Cannot be matched on the Kotlin parameter null check string "state",
+        // because the app no longer contains those strings.
+        val actionHandlerMethod = viewDelegateClassDef.methods.firstOrNull { method ->
+            method.containsLiteralInstruction(shakeToKudosStringId.toLong())
+        } ?: throw PatchException(
+            "Could not find the method that shows the 'Give Kudos' dialog in: ${viewDelegateClassDef.type}"
+        )
+
+        // Singleton instance of the state that makes the action handler show the "Give Kudos" dialog.
+        val giveKudosStateReference = actionHandlerMethod.implementation!!.instructions
+            .take(actionHandlerMethod.indexOfFirstLiteralInstructionOrThrow(shakeToKudosStringId.toLong()))
+            .last { instruction -> instruction.opcode == Opcode.SGET_OBJECT }
+            .getReference<FieldReference>()!!
 
         InitFingerprint.method.apply {
-            val constLeaveIdInstruction = instructions.filterIsInstance<BuilderInstruction31i>().first {
-                it.narrowLiteral == leaveIdId
-            }
-            val findViewByIdInstruction =
-                getInstruction<BuilderInstruction35c>(constLeaveIdInstruction.location.index + 1)
-            val moveViewInstruction =
-                getInstruction<BuilderInstruction11x>(constLeaveIdInstruction.location.index + 2)
-            val checkCastButtonInstruction =
-                getInstruction<BuilderInstruction21c>(constLeaveIdInstruction.location.index + 3)
+            // Instructions that inflate the "Leave Group" button, which the "Give Kudos" button is cloned from.
+            val constLeaveIdIndex = indexOfFirstLiteralInstructionOrThrow(leaveIdId.toLong())
+            val findViewByIdInstruction = getInstruction<BuilderInstruction35c>(constLeaveIdIndex + 1)
+            val fragmentRegister = findViewByIdInstruction.registerC
 
-            val buttonClassName = checkCastButtonInstruction.getReference<TypeReference>()!!.type
+            // The app packs this constructor tightly, so free registers must be found
+            // instead of assuming any are available.
+            val freeRegisters = getFreeRegisterProvider(constLeaveIdIndex, 3, fragmentRegister)
+            val viewRegister = freeRegisters.getFreeRegister4Bit()
+            val stateRegister = freeRegisters.getFreeRegister4Bit()
+            val methodNameRegister = freeRegisters.getFreeRegister4Bit()
 
             addInstructions(
-                constLeaveIdInstruction.location.index,
+                constLeaveIdIndex,
                 """
-                    ${constLeaveIdInstruction.opcode.name} v${constLeaveIdInstruction.registerA}, $kudosIdId
-                    ${findViewByIdInstruction.opcode.name} { v${findViewByIdInstruction.registerC}, v${findViewByIdInstruction.registerD} }, ${findViewByIdInstruction.reference}
-                    ${moveViewInstruction.opcode.name} v${moveViewInstruction.registerA}
-                    ${checkCastButtonInstruction.opcode.name} v${checkCastButtonInstruction.registerA}, ${checkCastButtonInstruction.reference}
-                    sget-object v0, ${getSingletonInstruction.reference}
-                    const-string v1, "${actionHandlerMethod.name}"
-                    new-instance v2, $GIVE_KUDOS_ON_CLICK_LISTENER_DESCRIPTOR
-                    invoke-direct { v2, p0, v0, v1 }, $GIVE_KUDOS_ON_CLICK_LISTENER_DESCRIPTOR-><init>(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)V
-                    invoke-virtual { p3, v2 }, $buttonClassName->setOnClickListener($ON_CLICK_LISTENER_CLASS_DESCRIPTOR)V
+                    const v$viewRegister, $kudosIdId
+                    ${findViewByIdInstruction.opcode.name} { v$fragmentRegister, v$viewRegister }, ${findViewByIdInstruction.reference}
+                    move-result-object v$viewRegister
+                    sget-object v$stateRegister, $giveKudosStateReference
+                    const-string v$methodNameRegister, "${actionHandlerMethod.name}"
+                    invoke-static { v$viewRegister, p0, v$stateRegister, v$methodNameRegister }, $ATTACH_LISTENER_METHOD_DESCRIPTOR
                 """.trimIndent(),
             )
         }
     }
 }
-

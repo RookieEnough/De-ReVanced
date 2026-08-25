@@ -17,6 +17,7 @@ import app.morphe.patches.shared.misc.mapping.ResourceType
 import app.morphe.patches.shared.misc.mapping.getResourceId
 import app.morphe.patches.shared.misc.mapping.resourceMappingPatch
 import app.morphe.patches.strava.misc.extension.sharedExtensionPatch
+import app.morphe.util.findMutableMethodOf
 import app.morphe.util.getReference
 import app.morphe.util.writeRegister
 import com.android.tools.smali.dexlib2.Opcode
@@ -54,7 +55,18 @@ val addMediaDownloadPatch = bytecodePatch(
 
         // region Extend menu of `FullscreenMediaFragment` with actions.
 
-        CreateAndShowFragmentFingerprint.match(fragmentClassDef).method.apply {
+        // Method that builds the menu of the full-screen media viewer.
+        // Cannot be matched on the Kotlin parameter null check string "mediaType",
+        // because the app no longer contains those strings. It is the only method
+        // of the fragment that creates `Action` menu items.
+        val createAndShowFragmentMethod = fragmentClassDef.methods.firstOrNull { method ->
+            method.implementation?.instructions?.any { instruction ->
+                instruction.opcode == Opcode.NEW_INSTANCE &&
+                        instruction.getReference<TypeReference>()?.type == ACTION_CLASS_DESCRIPTOR
+            } == true
+        } ?: throw PatchException("Could not find the method that shows the media viewer menu")
+
+        mutableClassDefBy(fragmentClassDef).findMutableMethodOf(createAndShowFragmentMethod).apply {
             val setTrueIndex = instructions.indexOfFirst { instruction ->
                 instruction.opcode == Opcode.IPUT_BOOLEAN
             }
