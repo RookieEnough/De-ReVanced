@@ -61,6 +61,35 @@
       "options": []
     },
     {
+      "name": "Add route export",
+      "description": "Allows exporting and downloading Strava routes as GPX or TCX files directly from the app.",
+      "default": true,
+      "dependencies": [
+        "ResourcePatch",
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "com.strava",
+          "name": "Strava",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": "#FC6925",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "473.11",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Always allow deep-linking",
       "description": "Open Amazon links, even if the app is not set to handle Amazon links.",
       "default": true,

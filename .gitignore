@@ -1,6 +1,8 @@
 # Gradle files
 .gradle/
 build/
+bin/
+*/bin/
 !patches/src/main/kotlin/app/morphe/patches/all/misc/build/
 !patches/src/main/kotlin/app/morphe/patches/all/misc/build/**
 
