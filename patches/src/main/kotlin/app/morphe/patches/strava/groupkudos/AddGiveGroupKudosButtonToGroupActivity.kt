@@ -7,12 +7,11 @@ package app.morphe.patches.strava.groupkudos
 import app.morphe.patches.shared.compat.AppCompatibilities
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.patch.PatchException
+import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patches.strava.misc.extension.sharedExtensionPatch
 import app.morphe.util.childElementsSequence
-import app.morphe.util.containsLiteralInstruction
 import app.morphe.util.findElementByAttributeValueOrThrow
 import app.morphe.util.getFreeRegisterProvider
 import app.morphe.util.getReference
@@ -27,7 +26,7 @@ private const val GIVE_KUDOS_ON_CLICK_LISTENER_DESCRIPTOR =
 private const val ATTACH_LISTENER_METHOD_DESCRIPTOR = "$GIVE_KUDOS_ON_CLICK_LISTENER_DESCRIPTOR->" +
     "attach(Landroid/view/View;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)V"
 
-private var shakeToKudosStringId = -1
+internal var shakeToKudosStringId = -1
 private var kudosIdId = -1
 private var leaveIdId = -1
 
@@ -103,20 +102,11 @@ val addGiveGroupKudosButtonToGroupActivity = bytecodePatch(
     dependsOn(addGiveKudosButtonToLayoutPatch, sharedExtensionPatch)
 
     execute {
-        val viewDelegateClassDef = InitFingerprint.originalClassDef
-
-        // Method that renders the view states, one of which shows the "Give Kudos" dialog.
-        // Cannot be matched on the Kotlin parameter null check string "state",
-        // because the app no longer contains those strings.
-        val actionHandlerMethod = viewDelegateClassDef.methods.firstOrNull { method ->
-            method.containsLiteralInstruction(shakeToKudosStringId.toLong())
-        } ?: throw PatchException(
-            "Could not find the method that shows the 'Give Kudos' dialog in: ${viewDelegateClassDef.type}"
-        )
+        val actionHandlerMatch = ActionHandlerFingerprint.match(InitFingerprint.originalClassDef)
 
         // Singleton instance of the state that makes the action handler show the "Give Kudos" dialog.
-        val giveKudosStateReference = actionHandlerMethod.implementation!!.instructions
-            .take(actionHandlerMethod.indexOfFirstLiteralInstructionOrThrow(shakeToKudosStringId.toLong()))
+        val giveKudosStateReference = actionHandlerMatch.method.instructions
+            .take(actionHandlerMatch.instructionMatches.first().index)
             .last { instruction -> instruction.opcode == Opcode.SGET_OBJECT }
             .getReference<FieldReference>()!!
 
@@ -140,7 +130,7 @@ val addGiveGroupKudosButtonToGroupActivity = bytecodePatch(
                     ${findViewByIdInstruction.opcode.name} { v$fragmentRegister, v$viewRegister }, ${findViewByIdInstruction.reference}
                     move-result-object v$viewRegister
                     sget-object v$stateRegister, $giveKudosStateReference
-                    const-string v$methodNameRegister, "${actionHandlerMethod.name}"
+                    const-string v$methodNameRegister, "${actionHandlerMatch.method.name}"
                     invoke-static { v$viewRegister, p0, v$stateRegister, v$methodNameRegister }, $ATTACH_LISTENER_METHOD_DESCRIPTOR
                 """.trimIndent(),
             )
