@@ -1,20 +1,24 @@
 /*
+ * Copyright 2026 De-Vanced
+ * https://github.com/RookieEnough/De-Vanced/pull/113
+ *
  * Forked from:
  * https://gitlab.com/ReVanced/revanced-patches/-/blob/main/patches/src/main/kotlin/app/revanced/patches/strava/groupkudos/AddGiveGroupKudosButtonToGroupActivity.kt
  */
 package app.morphe.patches.strava.groupkudos
 
-import app.morphe.patches.shared.compat.AppCompatibilities
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patches.shared.compat.AppCompatibilities
+import app.morphe.patches.shared.misc.mapping.resourceMappingPatch
 import app.morphe.patches.strava.misc.extension.sharedExtensionPatch
 import app.morphe.util.childElementsSequence
 import app.morphe.util.findElementByAttributeValueOrThrow
 import app.morphe.util.getFreeRegisterProvider
 import app.morphe.util.getReference
+import app.morphe.util.indexOfFirstInstructionReversedOrThrow
 import app.morphe.util.indexOfFirstLiteralInstructionOrThrow
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction35c
@@ -26,7 +30,6 @@ private const val GIVE_KUDOS_ON_CLICK_LISTENER_DESCRIPTOR =
 private const val ATTACH_LISTENER_METHOD_DESCRIPTOR = "$GIVE_KUDOS_ON_CLICK_LISTENER_DESCRIPTOR->" +
     "attach(Landroid/view/View;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)V"
 
-internal var shakeToKudosStringId = -1
 private var kudosIdId = -1
 private var leaveIdId = -1
 
@@ -34,6 +37,7 @@ private val addGiveKudosButtonToLayoutPatch = resourcePatch {
     fun String.toResourceId() = substring(2).toInt(16)
 
     execute {
+
         document("res/values/public.xml").use { public ->
             fun Sequence<Element>.firstByName(name: String) = first {
                 it.getAttribute("name") == name
@@ -45,12 +49,6 @@ private val addGiveKudosButtonToLayoutPatch = resourcePatch {
             val idElements = publicElements.filter {
                 it.getAttribute("type") == "id"
             }
-            val stringElements = publicElements.filter {
-                it.getAttribute("type") == "string"
-            }
-
-            shakeToKudosStringId =
-                stringElements.firstByName("shake_to_kudos_dialog_title").getAttribute("id").toResourceId()
 
             val kudosIdNode = idElements.firstByName("kudos").apply {
                 kudosIdId = getAttribute("id").toResourceId()
@@ -99,16 +97,21 @@ val addGiveGroupKudosButtonToGroupActivity = bytecodePatch(
 ) {
     compatibleWith(AppCompatibilities.STRAVA)
 
-    dependsOn(addGiveKudosButtonToLayoutPatch, sharedExtensionPatch)
+    dependsOn(
+        sharedExtensionPatch,
+        resourceMappingPatch,
+        addGiveKudosButtonToLayoutPatch
+    )
 
     execute {
-        val actionHandlerMatch = ActionHandlerFingerprint.match(InitFingerprint.originalClassDef)
-
         // Singleton instance of the state that makes the action handler show the "Give Kudos" dialog.
-        val giveKudosStateReference = actionHandlerMatch.method.instructions
-            .take(actionHandlerMatch.instructionMatches.first().index)
-            .last { instruction -> instruction.opcode == Opcode.SGET_OBJECT }
-            .getReference<FieldReference>()!!
+        val actionHandlerMethodName = ActionHandlerFingerprint.method.name
+        // Find last SGET_OBJECT reference
+        val giveKudosStateReference = ActionHandlerFingerprint.method.let {
+            it.getInstruction(
+                it.indexOfFirstInstructionReversedOrThrow(Opcode.SGET_OBJECT)
+            ).getReference<FieldReference>()!!
+        }
 
         InitFingerprint.method.apply {
             // Instructions that inflate the "Leave Group" button, which the "Give Kudos" button is cloned from.
@@ -130,9 +133,9 @@ val addGiveGroupKudosButtonToGroupActivity = bytecodePatch(
                     ${findViewByIdInstruction.opcode.name} { v$fragmentRegister, v$viewRegister }, ${findViewByIdInstruction.reference}
                     move-result-object v$viewRegister
                     sget-object v$stateRegister, $giveKudosStateReference
-                    const-string v$methodNameRegister, "${actionHandlerMatch.method.name}"
+                    const-string v$methodNameRegister, "$actionHandlerMethodName"
                     invoke-static { v$viewRegister, p0, v$stateRegister, v$methodNameRegister }, $ATTACH_LISTENER_METHOD_DESCRIPTOR
-                """.trimIndent(),
+                """
             )
         }
     }
