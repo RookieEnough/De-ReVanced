@@ -42,6 +42,7 @@ import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
@@ -95,7 +96,10 @@ public final class AddActivityExportPatch {
             // distractions) wrap getMenuItems() to return a filtered *copy*, so mutating that
             // return value would be discarded.
             Field field = findField(container.getClass(), "menuItems");
-            if (field == null) return;
+            if (field == null) {
+                Logger.printException(() -> "No menuItems field on " + container.getClass());
+                return;
+            }
             field.setAccessible(true);
             Object raw = field.get(container);
             List<Object> items = raw instanceof List ? (List<Object>) raw : null;
@@ -114,8 +118,8 @@ public final class AddActivityExportPatch {
                 try {
                     items.add(menuItem);
                     return;
-                } catch (Throwable ignored) {
-                    // fall through to field replacement
+                } catch (Exception ex) {
+                    Logger.printDebug(() -> "Menu list is immutable, replacing it", ex);
                 }
             }
             // Menu list was null or immutable: replace the field with a mutable copy.
@@ -123,7 +127,9 @@ public final class AddActivityExportPatch {
             if (items != null) copy.addAll(items);
             copy.add(menuItem);
             field.set(container, copy);
-        } catch (Throwable ignored) {}
+        } catch (Throwable ex) {
+            Logger.printException(() -> "augmentAdpMenu failure", ex);
+        }
     }
 
     /** The app's own label for exporting an activity as GPX, as used by the feed's menu. */
@@ -161,7 +167,8 @@ public final class AddActivityExportPatch {
             }
             download(ctx, id);
             return true;
-        } catch (Throwable t) {
+        } catch (Throwable ex) {
+            Logger.printException(() -> "onAdpEvent failure", ex);
             return false;
         }
     }
@@ -205,7 +212,8 @@ public final class AddActivityExportPatch {
             // the same bucket. (The ADP renderer buckets items by icon presence.)
             ctor.setAccessible(true);
             return ctor.newInstance(text, destination, null, ELEMENT_NAME);
-        } catch (Throwable t) {
+        } catch (Throwable ex) {
+            Logger.printException(() -> "buildMenuItem failure", ex);
             return null;
         }
     }
@@ -219,7 +227,8 @@ public final class AddActivityExportPatch {
         try {
             Object r = target.getClass().getMethod(getter).invoke(target);
             return r != null ? r.toString() : null;
-        } catch (Throwable t) {
+        } catch (Exception ex) {
+            Logger.printDebug(() -> "No " + getter + " on " + target.getClass(), ex);
             return null;
         }
     }
@@ -235,7 +244,9 @@ public final class AddActivityExportPatch {
                     if (target.isInstance(v)) return v;
                 }
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ex) {
+            Logger.printException(() -> "findFieldInstanceOf failure", ex);
+        }
         return null;
     }
 
@@ -248,7 +259,9 @@ public final class AddActivityExportPatch {
                     if (target.isInstance(v)) return v;
                 }
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ex) {
+            Logger.printException(() -> "findFieldAssignableTo failure", ex);
+        }
         return null;
     }
 
@@ -278,7 +291,9 @@ public final class AddActivityExportPatch {
                     }
                 }
             }
-        } catch (Throwable ignored) {}
+        } catch (Exception ex) {
+            Logger.printInfo(() -> "extractActivityId failure", ex);
+        }
         return -1;
     }
 
@@ -302,8 +317,9 @@ public final class AddActivityExportPatch {
                 saveToDownloads(fileName, "application/gpx+xml",
                         new ByteArrayInputStream(gpx.getBytes(StandardCharsets.UTF_8)));
                 showInfoToast("exo_download_completed", "✔️");
-            } catch (Exception e) {
-                showErrorToast("download_failure", "❌", e);
+            } catch (Exception ex) {
+                Logger.printInfo(() -> "download failure", ex);
+                showErrorToast("download_failure", "❌", ex);
             }
         });
     }
@@ -466,8 +482,8 @@ public final class AddActivityExportPatch {
             if (body == null) throw new IOException("Empty response");
             try {
                 return new JSONObject(body.string());
-            } catch (Exception e) {
-                throw new IOException("Invalid JSON from " + url);
+            } catch (Exception ex) {
+                throw new IOException("Invalid JSON from " + url, ex);
             }
         }
     }
@@ -486,7 +502,9 @@ public final class AddActivityExportPatch {
                 String v = prefs.getString(key, null);
                 if (v != null && v.length() >= 20) return v;
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ex) {
+            Logger.printException(() -> "getAuthToken failure", ex);
+        }
         return null;
     }
 
@@ -543,7 +561,8 @@ public final class AddActivityExportPatch {
             f.setTimeZone(TimeZone.getTimeZone("UTC"));
             Date d = f.parse(iso);
             return d != null ? d.getTime() : -1;
-        } catch (Exception e) {
+        } catch (Exception ex) {
+            Logger.printException(() -> "Could not parse start date: " + iso, ex);
             return -1;
         }
     }
