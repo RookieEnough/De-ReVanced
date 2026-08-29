@@ -27,11 +27,8 @@ internal object AdpModularResponseSuccessInitFingerprint : Fingerprint(
  * live in rather than on their names.
  */
 internal object AdpViewModelOnEventFingerprint : Fingerprint(
+    definingClass = ACTIVITY_DETAIL_PACKAGE,
     name = "onEvent",
     returnType = "V",
-    custom = { method, classDef ->
-        classDef.type.startsWith(ACTIVITY_DETAIL_PACKAGE) &&
-            method.parameterTypes.singleOrNull()?.toString()
-                ?.startsWith(MODULAR_FRAMEWORK_MVP_PACKAGE) == true
-    },
+    parameters = listOf(MODULAR_FRAMEWORK_MVP_PACKAGE)
 )
