@@ -29,9 +29,7 @@ import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -71,7 +69,7 @@ final class GooglePhotosAccountAvatar {
     private static final String ACCOUNT_TYPE = "app.revanced";
     private static final String RESOURCE_PACKAGE_NAME = "com.google.android.apps.photos";
     private static final String PROFILE_TOKEN_TYPE =
-            "oauth2:openid profile https://www.googleapis.com/auth/mobileapps.native "
+            "oauth2:openid https://www.googleapis.com/auth/mobileapps.native "
                     + "https://www.googleapis.com/auth/photos.native";
     private static final String USER_INFO_URL =
             "https://www.googleapis.com/oauth2/v3/userinfo";
@@ -351,9 +349,8 @@ final class GooglePhotosAccountAvatar {
             return;
         } catch (Exception exception) {
             FETCHING_ACCOUNT.compareAndSet(accountName, null);
-            Logger.printException(
-                    () -> "Could not obtain the Google Photos profile token",
-                    exception
+            Logger.printInfo(
+                    () -> "Could not obtain the Google Photos profile token: " + exception.getMessage()
             );
             if (selectedAccountName != null
                     && !sameAccount(accountName, selectedAccountName)) {
@@ -381,9 +378,8 @@ final class GooglePhotosAccountAvatar {
                     refreshDifferentAccount = selectedAccountName != null;
                 }
             } catch (Exception exception) {
-                Logger.printException(
-                        () -> "Could not load the Google Photos account avatar",
-                        exception
+                Logger.printInfo(
+                        () -> "Could not load the Google Photos account avatar: " + exception.getMessage()
                 );
                 refreshDifferentAccount = selectedAccountName != null
                         && !sameAccount(accountName, selectedAccountName);
@@ -407,16 +403,20 @@ final class GooglePhotosAccountAvatar {
                 throw new IllegalStateException("Google user-info HTTP status " + status);
             }
 
-            JsonObject response;
+            StringBuilder jsonBuilder = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(
                     userInfoConnection.getInputStream(), StandardCharsets.UTF_8))) {
-                response = JsonParser.parseReader(reader).getAsJsonObject();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    jsonBuilder.append(line);
+                }
             }
 
-            JsonElement picture = response.get("picture");
-            if (picture == null || picture.isJsonNull()) return null;
+            JSONObject response = new JSONObject(jsonBuilder.toString());
+            String pictureUrl = response.optString("picture", null);
+            if (pictureUrl == null || pictureUrl.isEmpty()) return null;
 
-            HttpURLConnection imageConnection = openConnection(picture.getAsString());
+            HttpURLConnection imageConnection = openConnection(pictureUrl);
             try {
                 if (imageConnection.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
                 try (InputStream stream = new BufferedInputStream(imageConnection.getInputStream())) {

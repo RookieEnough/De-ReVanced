@@ -1190,7 +1190,7 @@ public class Utils {
     public static <T, V> Map<T, V> createSizeRestrictedMap(int maxSize) {
         return new LinkedHashMap<>(2 * maxSize) {
             @Override
-            protected boolean removeEldestEntry(Entry eldest) {
+            protected boolean removeEldestEntry(Map.Entry<T, V> eldest) {
                 return size() > maxSize;
             }
         };
