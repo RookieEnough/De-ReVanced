@@ -1,3 +1,9 @@
+## [1.3.1-dev.1](https://github.com/RookieEnough/De-Vanced/compare/v1.3.0...v1.3.1-dev.1) (2026-08-31)
+
+### 🐛 Bug Fixes
+
+* **Google Photos:** Fix avatar OAuth scope, JSON parser, and error logging ([c6aa971](https://github.com/RookieEnough/De-Vanced/commit/c6aa9710730c5196766e54fb2cb08e6ded4995a1))
+
 ## [1.3.0](https://github.com/RookieEnough/De-Vanced/compare/v1.2.2...v1.3.0) (2026-08-31)
 
 ### 🐛 Bug Fixes
