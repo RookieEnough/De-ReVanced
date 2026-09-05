@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-08-31T19:36:53",
-  "description": "## [1.3.1](https://github.com/RookieEnough/De-Vanced/compare/v1.3.0...v1.3.1) (2026-08-31)\n\n### 🐛 Bug Fixes\n\n* **Google Photos:** Fix avatar OAuth scope, JSON parser, and error logging ([c6aa971](https://github.com/RookieEnough/De-Vanced/commit/c6aa9710730c5196766e54fb2cb08e6ded4995a1))",
-  "download_url": "https://github.com/RookieEnough/De-Vanced/releases/download/v1.3.1/patches-1.3.1.mpp",
+  "created_at": "2026-09-05T15:13:04",
+  "description": "## [1.3.2-dev.1](https://github.com/RookieEnough/De-Vanced/compare/v1.3.1...v1.3.2-dev.1) (2026-09-05)\n\n### 🐛 Bug Fixes\n\n* **Strava - Add route export:** Patch additional methods ([42c8273](https://github.com/RookieEnough/De-Vanced/commit/42c8273e87a7a401842cd7de8b00e7e07aa2a8ae))",
+  "download_url": "https://github.com/RookieEnough/De-Vanced/releases/download/v1.3.2-dev.1/patches-1.3.2-dev.1.mpp",
   "signature_download_url": "",
-  "version": "1.3.1"
+  "version": "1.3.2-dev.1"
 }
