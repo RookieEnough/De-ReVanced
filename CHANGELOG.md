@@ -1,3 +1,9 @@
+## [1.3.2-dev.1](https://github.com/RookieEnough/De-Vanced/compare/v1.3.1...v1.3.2-dev.1) (2026-09-05)
+
+### 🐛 Bug Fixes
+
+* **Strava - Add route export:** Patch additional methods ([42c8273](https://github.com/RookieEnough/De-Vanced/commit/42c8273e87a7a401842cd7de8b00e7e07aa2a8ae))
+
 ## [1.3.1](https://github.com/RookieEnough/De-Vanced/compare/v1.3.0...v1.3.1) (2026-08-31)
 
 ### 🐛 Bug Fixes

@@ -4,7 +4,7 @@
  */
 package app.morphe.patches.strava.route.export
 
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patches.shared.compat.AppCompatibilities
 import app.morphe.patches.shared.misc.mapping.resourceMappingPatch
@@ -32,6 +32,8 @@ val addRouteExportPatch = bytecodePatch(
         classDefForEach { classDef ->
             if (AccessFlags.INTERFACE.isSet(classDef.accessFlags)) return@classDefForEach
 
+            val mutableClass by lazy { mutableClassDefBy(classDef) }
+
             classDef.methods.forEach { method ->
                 if (method.implementation == null) return@forEach
                 if (AccessFlags.ABSTRACT.isSet(method.accessFlags)) return@forEach
@@ -40,41 +42,29 @@ val addRouteExportPatch = bytecodePatch(
                 val shareIdx = paramTypes.indexOfFirst { it.endsWith("/ShareObject;") }
                 if (shareIdx < 0) return@forEach
 
-                try {
-                    val mutableClass = mutableClassDefBy(classDef)
-                    val mutableMethod = mutableClass.findMutableMethodOf(method)
-                    val reg = if (AccessFlags.STATIC.isSet(method.accessFlags)) "p$shareIdx" else "p${shareIdx + 1}"
+                val mutableMethod = mutableClass.findMutableMethodOf(method)
+                val reg = if (AccessFlags.STATIC.isSet(method.accessFlags)) "p$shareIdx" else "p${shareIdx + 1}"
 
-                    mutableMethod.addInstructions(
-                        0,
-                        """
-                            invoke-static { $reg }, $EXTENSION_CLASS_DESCRIPTOR->onShareObject(Ljava/lang/Object;)V
-                        """.trimIndent(),
-                    )
-                } catch (_: Exception) {
-                    // Skip methods whose classes cannot be proxied.
-                }
+                mutableMethod.addInstruction(
+                    0,
+                    "invoke-static/range { $reg .. $reg }, $EXTENSION_CLASS_DESCRIPTOR->" +
+                            "onShareObject(Ljava/lang/Object;)V"
+                )
             }
         }
 
         // Hook: trigger export dialog when ShareSheetActivity opens.
-        ShareSheetActivityOnCreateFingerprint.match().let { match ->
-            match.method.addInstructions(
-                0,
-                """
-                    invoke-static { p0 }, $EXTENSION_CLASS_DESCRIPTOR->onShareSheetActivityStarted(Landroid/app/Activity;)V
-                """.trimIndent(),
-            )
-        }
+        ShareSheetActivityOnCreateFingerprint.method.addInstruction(
+            0,
+            "invoke-static { p0 }, $EXTENSION_CLASS_DESCRIPTOR->" +
+                    "onShareSheetActivityStarted(Landroid/app/Activity;)V"
+        )
 
         // Hook: trigger export dialog when CopyLinkToClipboardActivity opens.
-        CopyLinkActivityOnCreateFingerprint.match().let { match ->
-            match.method.addInstructions(
-                0,
-                """
-                    invoke-static { p0 }, $EXTENSION_CLASS_DESCRIPTOR->onCopyLinkActivityStarted(Landroid/app/Activity;)V
-                """.trimIndent(),
-            )
-        }
+        CopyLinkActivityOnCreateFingerprint.method.addInstruction(
+            0,
+            "invoke-static { p0 }, $EXTENSION_CLASS_DESCRIPTOR->" +
+                    "onCopyLinkActivityStarted(Landroid/app/Activity;)V"
+        )
     }
 }
